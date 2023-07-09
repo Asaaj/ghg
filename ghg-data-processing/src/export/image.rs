@@ -1,59 +1,21 @@
-use std::ops::Sub;
-
-use ghg_data_core::metadata::{ChannelMetadata, Metadata};
 use image::{
 	GrayAlphaImage, GrayImage, ImageBuffer, Luma, LumaA, Pixel, Rgb, RgbImage, Rgba, RgbaImage,
 };
 use itertools::izip;
+use shapefile::Shape;
 
-pub trait DataType = Copy + Clone + Default + PartialOrd + Sub<Output = Self>;
+use crate::export::data_2d_statistics::{Data2dStatistics, DataType};
+use crate::export::geometry_map::{GeometryMap, Identity};
+use crate::file_type::Shp;
 
-#[derive(Clone)]
-pub struct Data1d<T: DataType> {
-	pub columns: Vec<T>,
+pub trait ToImage<P: Pixel> {
+	type Data;
+	fn width(&self) -> usize;
+	fn height(&self) -> usize;
+	fn to_image(&self) -> ImageBuffer<P, Vec<P::Subpixel>>;
 }
 
-impl<T: DataType> Data1d<T> {
-	fn new(size: usize) -> Self {
-		let mut columns = Vec::with_capacity(size);
-		columns.resize(size, T::default());
-		Self { columns }
-	}
-
-	fn width(&self) -> usize { self.columns.len() }
-}
-
-#[derive(Clone)]
-pub struct Data2d<T: DataType> {
-	pub rows: Vec<Data1d<T>>,
-}
-
-impl<T: DataType> Data2d<T> {
-	pub fn new(width: usize, height: usize) -> Self {
-		let mut rows = Vec::with_capacity(height);
-		rows.resize(height, Data1d::new(width));
-		Self { rows }
-	}
-
-	pub fn width(&self) -> usize {
-		if self.rows.len() == 0 {
-			return 0;
-		}
-		self.rows[0].width()
-	}
-
-	pub fn height(&self) -> usize { self.rows.len() }
-}
-
-#[derive(Clone)]
-pub struct Data2dStatistics<T: DataType> {
-	pub name: String,
-	pub data: Data2d<T>,
-	pub min: Option<T>,
-	pub max: Option<T>,
-}
-
-pub trait PixelMappable<T: DataType> {
+pub trait PixelMappable<T> {
 	fn get_pixel_map(&self) -> Box<dyn Fn(&T) -> u8>;
 }
 
@@ -66,47 +28,6 @@ impl PixelMappable<f64> for Data2dStatistics<f64> {
 			(255.0 * portion) as u8
 		})
 	}
-}
-
-impl<T: DataType> Sub for &Data2dStatistics<T>
-where
-	T: Sub<Output = T>,
-{
-	type Output = Data2dStatistics<T>;
-
-	fn sub(self, rhs: Self) -> Self::Output {
-		let mut difference = Data2d::new(self.data.width(), self.data.height());
-		let mut min = None;
-		let mut max = None;
-
-		for (row, (a_row, b_row)) in self.data.rows.iter().zip(rhs.data.rows.iter()).enumerate() {
-			for (col, (a_val, b_val)) in a_row.columns.iter().zip(b_row.columns.iter()).enumerate()
-			{
-				let val_difference = *b_val - *a_val;
-				if max.is_none() || val_difference > max.unwrap() {
-					max = Some(val_difference);
-				}
-				if min.is_none() || val_difference < min.unwrap() {
-					min = Some(val_difference);
-				}
-				difference.rows[row].columns[col] = val_difference;
-			}
-		}
-
-		Data2dStatistics {
-			name: format!("{} - {}", self.name, rhs.name),
-			data: difference,
-			min,
-			max,
-		}
-	}
-}
-
-pub trait ToImage<P: Pixel> {
-	type Data;
-	fn width(&self) -> usize;
-	fn height(&self) -> usize;
-	fn to_image(&self) -> ImageBuffer<P, Vec<P::Subpixel>>;
 }
 
 impl<T: DataType> ToImage<Luma<u8>> for Data2dStatistics<T>
@@ -264,22 +185,40 @@ where
 			.expect("Failed to create image!")
 	}
 }
-pub trait ToMetadata {
-	fn to_metadata(&self) -> Metadata;
-}
 
-impl ToMetadata for [Data2dStatistics<f64>; 3] {
-	fn to_metadata(&self) -> Metadata {
-		self.iter()
-			.map(|ds| ChannelMetadata { min: ds.min.unwrap(), max: ds.max.unwrap() })
-			.collect()
-	}
-}
+impl ToImage<Luma<u8>> for Shp<f64> {
+	type Data = f64;
 
-impl ToMetadata for [Data2dStatistics<f64>; 4] {
-	fn to_metadata(&self) -> Metadata {
-		self.iter()
-			.map(|ds| ChannelMetadata { min: ds.min.unwrap(), max: ds.max.unwrap() })
-			.collect()
+	fn width(&self) -> usize { self.width }
+
+	fn height(&self) -> usize { self.height }
+
+	fn to_image(&self) -> ImageBuffer<Luma<u8>, Vec<<Luma<u8> as Pixel>::Subpixel>> {
+		let mut reader = self.reader.borrow_mut();
+
+		let buffer_length = self.width() * self.height();
+		let mut output_buffer = vec![0; buffer_length];
+
+		let mut num_shapes = 0;
+		for shape_record in reader.iter_shapes_and_records() {
+			let (shape, record) = shape_record.expect("Failed to get shape/record");
+			num_shapes += 1;
+			match shape {
+				Shape::Polygon(polygon) => {
+					for ring in polygon.rings() {
+						for point in ring.points() {
+							let (x, y) = self.filter_coordinates(point.x, point.y);
+							self.set_pixel(&mut output_buffer, 255u8, x, y, 0);
+						}
+					}
+				}
+				other => println!("Unsupported shape type: {}", other),
+			};
+		}
+
+		println!("Total: {} polygons", num_shapes);
+
+		GrayImage::from_raw(self.width() as u32, self.height() as u32, output_buffer)
+			.expect("Failed to create image!")
 	}
 }

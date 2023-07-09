@@ -4,8 +4,10 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-use ghg_data_processing::data_model::{Data2dStatistics, DataType, ToImage, ToMetadata};
-use ghg_data_processing::file_type::{CdfMetadata, DataFile, Nc4};
+use ghg_data_processing::export::data_2d_statistics::{Data2dStatistics, DataType, ToMetadata};
+use ghg_data_processing::export::image::ToImage;
+use ghg_data_processing::file_type::cdf::{CdfMetadata, Nc, Nc4};
+use ghg_data_processing::file_type::{DataFile, ToStatistics};
 use ghg_data_processing::read_data::find_data_files;
 use ghg_data_processing::save_result::save_channels;
 use rayon::prelude::*;

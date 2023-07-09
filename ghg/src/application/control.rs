@@ -31,6 +31,33 @@ impl Controller {
 	) -> Self {
 		let mut input_subscriber = FrameInputSubscriber::new(canvas);
 
+		input_subscriber.subscribe_on_keyboard_event(Box::new(
+			move |key_states: Vec<KeyState>, _current_state: InputState| {
+				let scale_max = 0.1f32;
+
+				planet_shader.use_shader();
+
+				key_states.iter().for_each(|k| match k {
+					KeyState { key, state: SwitchState::Pressed } => match key.as_str() {
+						"Digit1" => terrain_scale.write_unchecked(0.1 * scale_max),
+						"Digit2" => terrain_scale.write_unchecked(0.3 * scale_max),
+						"Digit3" => terrain_scale.write_unchecked(0.5 * scale_max),
+						"Digit4" => terrain_scale.write_unchecked(0.7 * scale_max),
+						"Digit5" => terrain_scale.write_unchecked(0.9 * scale_max),
+						"Digit6" => terrain_scale.write_unchecked(1.5 * scale_max),
+						"ArrowRight" => {
+							current_month.replace((current_month.get() + 1) % 12);
+						}
+						"ArrowLeft" => {
+							current_month.replace(((current_month.get() - 1) + 12) % 12);
+						}
+						other => ghg_log!("{:?}", other),
+					},
+					_ => {}
+				})
+			},
+		));
+
 		let mouse_move_camera = camera.clone();
 		input_subscriber.subscribe_on_mouse_move(Box::new(
 			move |movement: MouseMovement, current_state: InputState| {
@@ -74,33 +101,6 @@ impl Controller {
 						all_active[1],
 					);
 				}
-			},
-		));
-
-		input_subscriber.subscribe_on_keyboard_event(Box::new(
-			move |key_states: Vec<KeyState>, _current_state: InputState| {
-				let scale_max = 0.1f32;
-
-				planet_shader.use_shader();
-
-				key_states.iter().for_each(|k| match k {
-					KeyState { key, state: SwitchState::Pressed } => match key.as_str() {
-						"Digit1" => terrain_scale.write_unchecked(0.1 * scale_max),
-						"Digit2" => terrain_scale.write_unchecked(0.3 * scale_max),
-						"Digit3" => terrain_scale.write_unchecked(0.5 * scale_max),
-						"Digit4" => terrain_scale.write_unchecked(0.7 * scale_max),
-						"Digit5" => terrain_scale.write_unchecked(0.9 * scale_max),
-						"Digit6" => terrain_scale.write_unchecked(1.5 * scale_max),
-						"ArrowRight" => {
-							current_month.replace((current_month.get() + 1) % 12);
-						}
-						"ArrowLeft" => {
-							current_month.replace(((current_month.get() - 1) + 12) % 12);
-						}
-						other => ghg_log!("{:?}", other),
-					},
-					_ => {}
-				})
 			},
 		));
 

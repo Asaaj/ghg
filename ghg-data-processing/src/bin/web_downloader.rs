@@ -53,11 +53,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 	fs::create_dir_all(out_location)
 		.expect(format!("Failed to create out location {:?}", out_location).as_str());
 
-	let user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0";
+	let user_agent =
+		"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0";
 
-	let client = reqwest::blocking::ClientBuilder::new()
-		.user_agent(user_agent)
-		.build()?;
+	let client = reqwest::blocking::ClientBuilder::new().user_agent(user_agent).build()?;
 
 	for (index, link) in links.iter().enumerate() {
 		if link.starts_with("/") {
@@ -82,15 +81,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let mut file = File::create(&file_path)
 				.expect(format!("Failed to open file for writing: {:?}", &file_path).as_str());
 
-			let contents = client.get(new_url.as_str()).send()
+			let contents = client
+				.get(new_url.as_str())
+				.send()
 				.expect(format!("Failed to get URL {}", new_url).as_str())
 				.text()
 				.unwrap();
 
 			println!("RESULT: {}", contents);
 
-			// io::copy(&mut contents.as_bytes(), &mut file)
-			// 	.expect(format!("Failed to write file {:?}", &file_path).as_str());
+		// io::copy(&mut contents.as_bytes(), &mut file)
+		// 	.expect(format!("Failed to write file {:?}", &file_path).as_str());
 		} else {
 			println!("Error: Unsure how to download link: {}", link);
 		}

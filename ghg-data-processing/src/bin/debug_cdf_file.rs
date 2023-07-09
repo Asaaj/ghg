@@ -1,8 +1,9 @@
 use std::env;
 use std::path::Path;
 
-use ghg_data_processing::data_model::ToImage;
-use ghg_data_processing::file_type::{CdfMetadata, DataFile, Nc, Nc4};
+use ghg_data_processing::export::image::ToImage;
+use ghg_data_processing::file_type::cdf::{CdfMetadata, Nc, Nc4};
+use ghg_data_processing::file_type::{DataFile, ToStatistics};
 use ghg_data_processing::read_data::find_data_files;
 
 fn main() -> std::io::Result<()> {
@@ -29,18 +30,12 @@ fn main() -> std::io::Result<()> {
 		println!("\n\nReading file {file:?}\n");
 
 		let data = if file.extension() == Some(Nc::<f64>::extension()) {
-			Nc::<f64>::open(&data_files[0], metadata)
-				.expect(
-					format!("Failed to read file {:?}", data_files[0].file_name().unwrap())
-						.as_str(),
-				)
+			Nc::<f64>::open(file, metadata)
+				.expect(format!("Failed to read file {:?}", file.file_name().unwrap()).as_str())
 				.read_variables(&[])
 		} else if file.extension() == Some(Nc4::<f64>::extension()) {
-			Nc4::<f64>::open(&data_files[0], metadata)
-				.expect(
-					format!("Failed to read file {:?}", data_files[0].file_name().unwrap())
-						.as_str(),
-				)
+			Nc4::<f64>::open(file, metadata)
+				.expect(format!("Failed to read file {:?}", file.file_name().unwrap()).as_str())
 				.read_variables(&[])
 		} else {
 			panic!("Unexpected file extension: {:?}", file.extension())

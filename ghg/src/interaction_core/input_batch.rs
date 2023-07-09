@@ -140,18 +140,18 @@ impl InputState {
 	pub fn current_mouse_location(&self) -> Option<LogicalCursorPosition> { self.mouse_position }
 
 	pub fn active_touch_identifiers(&self) -> Vec<i32> {
-		self.current_set.iter().filter_map(|input| {
-			match input {
+		self.current_set
+			.iter()
+			.filter_map(|input| match input {
 				ActiveInput::Touch(i) => Some(*i),
 				_ => None,
-			}
-		}).collect()
+			})
+			.collect()
 	}
 
 	pub fn current_touch_position(&self, identifier: i32) -> Option<LogicalCursorPosition> {
 		self.touch_position.get(&identifier).cloned()
 	}
-
 }
 
 type KeyCode = String;
@@ -307,7 +307,6 @@ impl IncorporateState for InputState {
 					if let None = new_state.touch_position.remove(&identifier) {
 						ghg_log!("Error removing touch position {identifier} from state!");
 					}
-
 				}
 			}
 			// UserInput::FocusChange(is_focused) => {
