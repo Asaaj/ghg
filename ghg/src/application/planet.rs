@@ -20,25 +20,48 @@ use crate::render_core::image::load_into_texture;
 use crate::render_core::mesh::{
 	add_mesh, clear_frame, draw_meshes, DrawBuffers, DrawMode, MeshMode,
 };
+use crate::render_core::texture_provider::TextureProvider;
 use crate::render_core::uniform;
 use crate::request_data::fetch_bytes;
 #[allow(unused_imports)]
 use crate::utils::prelude::*;
 
-async fn load_planet_terrain(context: WebGl2RenderingContext) -> Result<(), JsValue> {
+async fn load_planet_terrain(
+	context: WebGl2RenderingContext,
+	texture_index: u32,
+) -> Result<(), JsValue> {
 	let texture = fetch_bytes("images/earth_height/2/full.png").await?;
-	load_into_texture::<Luma<u8>>(context, &texture, WebGl2RenderingContext::TEXTURE0)
+	load_into_texture::<Luma<u8>>(
+		context,
+		&texture,
+		WebGl2RenderingContext::TEXTURE0 + texture_index,
+	)
 }
 
-async fn load_planet_color(context: WebGl2RenderingContext) -> Result<(), JsValue> {
+async fn load_planet_color(
+	context: WebGl2RenderingContext,
+	texture_index: u32,
+) -> Result<(), JsValue> {
 	let texture = fetch_bytes("images/earth_color/2/full.png").await?;
-	load_into_texture::<Rgb<u8>>(context, &texture, WebGl2RenderingContext::TEXTURE1)?;
+	load_into_texture::<Rgb<u8>>(
+		context,
+		&texture,
+		WebGl2RenderingContext::TEXTURE0 + texture_index,
+	)?;
 	Ok(())
 }
 
-async fn load_all_textures(context: WebGl2RenderingContext, done: Rc<Cell<bool>>) {
-	let (color_result, terrain_result) =
-		join!(load_planet_color(context.clone()), load_planet_terrain(context.clone()),).await;
+async fn load_all_textures(
+	context: WebGl2RenderingContext,
+	done: Rc<Cell<bool>>,
+	terrain_index: u32,
+	color_index: u32,
+) {
+	let (color_result, terrain_result) = join!(
+		load_planet_color(context.clone(), color_index),
+		load_planet_terrain(context.clone(), terrain_index)
+	)
+	.await;
 
 	assert!(color_result.is_ok(), "Color load failed");
 	assert!(terrain_result.is_ok(), "Terrain load failed");
@@ -70,11 +93,25 @@ fn generate_drawable_sphere(
 pub async fn load_textures(
 	gate: FrameGate<AnimationParams>,
 	spawner: Spawner,
-	context: WebGl2RenderingContext,
+	shader: ShaderContext,
 	camera: Rc<RefCell<Camera>>,
+	mut texture_provider: TextureProvider,
 ) {
 	let textures_loaded = Rc::new(Cell::new(false));
-	spawner.spawn(load_all_textures(context, textures_loaded.clone()));
+
+	let color_index = texture_provider.take();
+	let terrain_index = texture_provider.take();
+
+	shader.use_shader();
+	uniform::init_i32("s_textureMap", &shader, terrain_index as i32);
+	uniform::init_i32("s_colorMap", &shader, color_index as i32);
+
+	spawner.spawn(load_all_textures(
+		shader.context,
+		textures_loaded.clone(),
+		terrain_index,
+		color_index,
+	));
 
 	let mut initial_spin = 3.0f32;
 	let mut spinner = move |delta_time: Duration, mut camera: RefMut<Camera>| -> bool {
@@ -118,9 +155,6 @@ pub async fn draw(
 	let planet_meshes_and_buffers = generate_drawable_sphere(10, 10, shader.clone());
 
 	let mut lighting = LightParameters::new(&shader);
-
-	uniform::init_i32("s_textureMap", &shader, 0);
-	uniform::init_i32("s_colorMap", &shader, 1);
 
 	// TODO: Need to make a uniform that can bind into multiple shader programs
 	let mut planet_model = uniform::new_smart_mat4("u_model", &shader);

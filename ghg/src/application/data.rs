@@ -13,6 +13,7 @@ use crate::application::shaders::ShaderContext;
 use crate::render_core::animation_params::AnimationParams;
 use crate::render_core::frame_sequencer::FrameGate;
 use crate::render_core::image::load_into_texture_with_filters;
+use crate::render_core::texture_provider::TextureProvider;
 use crate::render_core::uniform;
 use crate::request_data::fetch_bytes;
 use crate::utils::prelude::*;
@@ -42,7 +43,7 @@ const MONTH_NAMES: [&str; 12] = [
 async fn load_temp_data(
 	shader_context: ShaderContext,
 	file_stem: &str,
-	texture_index: i32,
+	texture_index: u32,
 ) -> Result<Metadata, JsValue> {
 	let temp_root = Path::new("images/earth_temp");
 
@@ -58,7 +59,7 @@ async fn load_temp_data(
 	load_into_texture_with_filters::<Rgba<u8>>(
 		shader_context.context.clone(),
 		&texture,
-		WebGl2RenderingContext::TEXTURE0 + texture_index as u32,
+		WebGl2RenderingContext::TEXTURE0 + texture_index,
 		WebGl2RenderingContext::LINEAR,
 		WebGl2RenderingContext::NEAREST,
 	)?;
@@ -70,13 +71,15 @@ pub async fn handle_data(
 	gate: FrameGate<AnimationParams>,
 	shader_context: ShaderContext,
 	current_month: Rc<Cell<usize>>,
+	mut texture_provider: TextureProvider,
 ) {
-	let first_map_index: i32 = 2;
+	let map_indices: [u32; 3] =
+		[texture_provider.take(), texture_provider.take(), texture_provider.take()];
 
 	let load_all_results = join!(
-		load_temp_data(shader_context.clone(), "2021.01.04", first_map_index + 0),
-		load_temp_data(shader_context.clone(), "2021.05.08", first_map_index + 1),
-		load_temp_data(shader_context.clone(), "2021.09.12", first_map_index + 2),
+		load_temp_data(shader_context.clone(), "2021.01.04", map_indices[0]),
+		load_temp_data(shader_context.clone(), "2021.05.08", map_indices[1]),
+		load_temp_data(shader_context.clone(), "2021.09.12", map_indices[2]),
 	)
 	.await;
 
@@ -109,7 +112,7 @@ pub async fn handle_data(
 		let current_month = current_month.get() as i32;
 		let current_map_index = current_month / NUM_CHANNELS;
 
-		texture_uniform.smart_write(first_map_index + current_map_index);
+		texture_uniform.smart_write(map_indices[current_map_index as usize] as i32);
 		data_month_uniform.smart_write(current_month);
 	}
 }

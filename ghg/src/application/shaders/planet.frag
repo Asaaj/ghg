@@ -26,6 +26,9 @@ uniform vec3 u_lightColor;
 uniform vec3 u_cameraPosition;
 uniform float u_specularStrength;
 
+// Country parameters
+uniform sampler2D s_countryMap;
+
 // Data parameters
 const int NUM_MAPS_PER_YEAR = 3;
 const int NUM_CHANNELS_IN_MAP = 4;
@@ -44,7 +47,7 @@ vec3 getDiffuseLight(vec3 lightDir, vec3 norm) {
 }
 
 vec3 getSpecularLight(vec3 lightDir, vec3 norm) {
-    const float SHININESS = 32.0;
+    const float SHININESS = 16.0;
 
     vec3 viewDir = normalize(u_cameraPosition - fragPosition);
     vec3 reflectDir = reflect(-lightDir, norm);
@@ -65,7 +68,14 @@ vec4 getTerrainColor() {
     return mix(fragColor, mappedColor, 0.99);
 
     // Grayscale based on depth:
-    //    return mix(fragColor, vec4(terrainValue, terrainValue, terrainValue, 1.0), 0.93);
+//    return mix(fragColor, vec4(terrainValue, terrainValue, terrainValue, 1.0), 0.93);
+}
+
+vec4 getCountryColor() {
+    vec2 texturePoint = pointToUv(normalize(fragPosition));
+    vec4 countryColor = texture(s_countryMap, texturePoint);
+    vec3 color = hsl2rgb(vec3(countryColor.a, 1.0, 0.5));
+    return vec4(color, 1.0);
 }
 
 vec4 getDataColor() {
@@ -88,16 +98,6 @@ vec4 getDataColor() {
 
     vec3 withinColorSpace = hsl2rgb(vec3(channelValue, 1.0, 0.5));
     return vec4(withinColorSpace, 1.0);
-
-    //    if (channelInMap == 0) {
-    //        return vec4(vec3(dataRealValue.r), 1.0);
-    //    } else if (channelInMap == 1) {
-    //        return vec4(vec3(dataRealValue.g), 1.0);
-    //    } else if (channelInMap == 2) {
-    //        return vec4(vec3(dataRealValue.b), 1.0);
-    //    } else { // if (channelInMap == 3) {
-    //        return vec4(vec3(dataRealValue.a), 1.0);
-    //    }
 }
 
 void main() {
@@ -109,9 +109,11 @@ void main() {
     + getSpecularLight(lightDir, norm);
 
     vec4 terrainColor = getTerrainColor();
+    vec4 countryColor = getCountryColor();
     vec4 dataColor = getDataColor();
 
-    vec4 surfaceColor = mix(terrainColor, dataColor, 0.7);
+    vec4 surfaceColor = mix(terrainColor, countryColor, 0.6);
+    surfaceColor = mix(surfaceColor, dataColor, 0.4);
 
     outColor = surfaceColor * vec4(totalLightColor, 1.0);
 }

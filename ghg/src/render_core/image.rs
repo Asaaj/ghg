@@ -1,6 +1,6 @@
 use image::{
-	DynamicImage, EncodableLayout, GenericImageView, GrayImage, Luma, Rgb, RgbImage, Rgba,
-	RgbaImage,
+	DynamicImage, EncodableLayout, GenericImageView, GrayAlphaImage, GrayImage, Luma, LumaA, Rgb,
+	RgbImage, Rgba, RgbaImage,
 };
 use wasm_bindgen::JsValue;
 use web_sys::WebGl2RenderingContext;
@@ -38,6 +38,24 @@ impl LoadableImageType for Luma<u8> {
 	fn raw(img: &Self::ImageType) -> &[u8] { img.as_bytes() }
 
 	fn name() -> String { "Luma8".to_owned() }
+}
+
+impl LoadableImageType for LumaA<u8> {
+	type ImageType = GrayAlphaImage;
+
+	fn texture_internal_format() -> u32 { WebGl2RenderingContext::LUMINANCE_ALPHA }
+
+	fn texture_format() -> u32 { WebGl2RenderingContext::LUMINANCE_ALPHA }
+
+	fn texture_type() -> u32 { WebGl2RenderingContext::UNSIGNED_BYTE }
+
+	fn cast_to(dynamic: &DynamicImage) -> Option<&Self::ImageType> { dynamic.as_luma_alpha8() }
+
+	fn copy_to(dynamic: &DynamicImage) -> Self::ImageType { dynamic.to_luma_alpha8() }
+
+	fn raw(img: &Self::ImageType) -> &[u8] { img.as_bytes() }
+
+	fn name() -> String { "LumaA8".to_owned() }
 }
 
 impl LoadableImageType for Rgb<u8> {

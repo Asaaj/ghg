@@ -42,6 +42,7 @@ impl ToGeometryUniverse for Shp<f64> {
 
 		let increment = 1usize;
 		let mut identity = 0usize;
+		let mut printed_keys = false;
 
 		for shape_record in reader.iter_shapes_and_records() {
 			let (shape, record) = shape_record.expect("Failed to get shape/record");
@@ -52,6 +53,13 @@ impl ToGeometryUniverse for Shp<f64> {
 					.expect("Failed to convert shapefile::Polygon to geo::MultiPolygon"),
 			);
 			identity = identity + increment;
+
+			if !printed_keys {
+				for (key, value) in record.into_iter().sorted_by_key(|(k, v)| k.clone()) {
+					println!("  {key} = {value:?}");
+				}
+				printed_keys = true;
+			}
 		}
 		universe.max_identity = identity - increment;
 		universe

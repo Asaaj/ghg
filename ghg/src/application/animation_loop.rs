@@ -8,11 +8,12 @@ use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 use crate::application::control::controller_frame;
 // use crate::application::data::load_temp_data;
 use crate::application::shaders::get_planet_shaders;
-use crate::application::{data, planet};
+use crate::application::{country, data, planet};
 use crate::render_core::animation::{wrap_animation_body, AnimationFn};
 use crate::render_core::animation_params::AnimationParams;
 use crate::render_core::camera::Camera;
 use crate::render_core::frame_sequencer::{FrameGate, FrameMarker, FrameSequencer};
+use crate::render_core::texture_provider::TextureProvider;
 use crate::utils::prelude::*;
 
 pub fn get_animation_loop(
@@ -31,18 +32,28 @@ pub fn get_animation_loop(
 
 	let current_month = Rc::new(Cell::new(0));
 
+	let mut texture_provider = TextureProvider::default();
+
 	let frame_sequencer = Rc::new(FrameSequencer::<AnimationParams>::new());
 	spawner.spawn(planet::load_textures(
 		FrameGate::new(frame_sequencer.clone(), "Load Textures".to_owned()),
 		spawner.clone(),
-		context.clone(),
+		planet_shader.clone(),
 		camera.clone(),
+		texture_provider.clone(),
+	));
+
+	spawner.spawn(country::draw_borders(
+		FrameGate::new(frame_sequencer.clone(), "Draw Countries".to_owned()),
+		planet_shader.clone(),
+		texture_provider.clone(),
 	));
 
 	spawner.spawn(data::handle_data(
 		FrameGate::new(frame_sequencer.clone(), "Handle Data".to_owned()),
 		planet_shader.clone(),
 		current_month.clone(),
+		texture_provider.clone(),
 	));
 
 	spawner.spawn(controller_frame(
