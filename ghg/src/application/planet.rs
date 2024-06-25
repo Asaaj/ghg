@@ -8,6 +8,7 @@ use image::{Luma, Rgb};
 use single_thread_executor::Spawner;
 use wasm_bindgen::JsValue;
 use web_sys::WebGl2RenderingContext;
+use crate::application::image_utility::biggest_mipmap_level;
 
 use crate::application::lighting::LightParameters;
 use crate::application::shaders::ShaderContext;
@@ -26,11 +27,14 @@ use crate::request_data::fetch_bytes;
 #[allow(unused_imports)]
 use crate::utils::prelude::*;
 
+const IMAGE_MAX_SIZE: usize = 21_600;
+
 async fn load_planet_terrain(
 	context: WebGl2RenderingContext,
 	texture_index: u32,
+	mipmap_level: usize,
 ) -> Result<(), JsValue> {
-	let texture = fetch_bytes("images/earth_height/2/full.png").await?;
+	let texture = fetch_bytes(format!("images/earth_height/{mipmap_level}/full.png").as_str()).await?;
 	load_into_texture::<Luma<u8>>(
 		context,
 		&texture,
@@ -41,8 +45,9 @@ async fn load_planet_terrain(
 async fn load_planet_color(
 	context: WebGl2RenderingContext,
 	texture_index: u32,
+	mipmap_level: usize,
 ) -> Result<(), JsValue> {
-	let texture = fetch_bytes("images/earth_color/2/full.png").await?;
+	let texture = fetch_bytes(format!("images/earth_color/{mipmap_level}/full.png").as_str()).await?;
 	load_into_texture::<Rgb<u8>>(
 		context,
 		&texture,
@@ -57,9 +62,12 @@ async fn load_all_textures(
 	terrain_index: u32,
 	color_index: u32,
 ) {
+	let texture_mipmap_level = biggest_mipmap_level(context.clone(), IMAGE_MAX_SIZE)
+		.expect("Failed to get max texture size");
+
 	let (color_result, terrain_result) = join!(
-		load_planet_color(context.clone(), color_index),
-		load_planet_terrain(context.clone(), terrain_index)
+		load_planet_color(context.clone(), color_index, texture_mipmap_level),
+		load_planet_terrain(context.clone(), terrain_index, texture_mipmap_level)
 	)
 	.await;
 

@@ -2,10 +2,14 @@ use image::{
 	GrayAlphaImage, GrayImage, ImageBuffer, Luma, LumaA, Pixel, Rgb, RgbImage, Rgba, RgbaImage,
 };
 use itertools::izip;
+
+#[cfg(feature = "read_shapefile")]
 use shapefile::Shape;
 
 use crate::export::data_2d_statistics::{Data2dStatistics, DataType};
+#[cfg(feature = "read_shapefile")]
 use crate::export::geometry_map::{GeometryMap, Identity};
+#[cfg(feature = "read_shapefile")]
 use crate::file_type::Shp;
 
 pub trait ToImage<P: Pixel> {
@@ -186,6 +190,7 @@ where
 	}
 }
 
+#[cfg(feature = "read_shapefile")]
 impl ToImage<Luma<u8>> for Shp<f64> {
 	type Data = f64;
 

@@ -7,3 +7,4 @@ pub mod planet;
 pub mod shaders;
 pub mod sphere;
 pub mod vertex;
+mod image_utility;

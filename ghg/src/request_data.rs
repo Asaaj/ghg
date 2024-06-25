@@ -3,8 +3,10 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{Blob, Response};
 
 use crate::render_core::canvas::window;
+use crate::utils::prelude::*;
 
 pub async fn fetch_bytes(url: &str) -> Result<Vec<u8>, JsValue> {
+	ghg_log!("Fetching {url}");
 	let blob = fetch_blob(url).await?;
 	let bytes = blob_to_bytes(blob).await?;
 	Ok(bytes)

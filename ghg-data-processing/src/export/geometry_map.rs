@@ -1,3 +1,4 @@
+#![cfg(feature = "read_shapefile")]
 use std::collections::HashMap;
 
 use euclid::approxeq::ApproxEq;

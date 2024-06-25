@@ -24,6 +24,7 @@ pub trait ToStatistics<TData: DataType, TVar: VariableDescriptor> {
 }
 
 /// *.shp + *.shx + *.dbf files (a.k.a. Shapefiles)
+#[cfg(feature = "read_shapefile")]
 pub struct Shp<T: DataType> {
 	pub(crate) reader: RefCell<shapefile::Reader<BufReader<File>, BufReader<File>>>,
 	pub(crate) width: usize,
@@ -31,12 +32,14 @@ pub struct Shp<T: DataType> {
 	phantom: PhantomData<T>,
 }
 
+#[cfg(feature = "read_shapefile")]
 #[derive(Copy, Clone, Debug)]
 pub struct ShapefileMetadata {
 	pub width: usize,
 	pub height: usize,
 }
 
+#[cfg(feature = "read_shapefile")]
 impl<T: DataType> DataFile<T, ShapefileMetadata> for Shp<T> {
 	fn extension() -> &'static OsStr { OsStr::new("shp") }
 
@@ -53,6 +56,7 @@ impl<T: DataType> DataFile<T, ShapefileMetadata> for Shp<T> {
 	}
 }
 
+#[cfg(feature = "read_shapefile")]
 impl Shp<f64> {
 	const NUM_CHANNELS: usize = 1;
 

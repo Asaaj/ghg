@@ -10,7 +10,7 @@ use image::imageops::{resize, FilterType};
 use image::io::Reader;
 use image::{
 	ColorType, DynamicImage, EncodableLayout, GenericImageView, GrayImage, ImageBuffer, Luma,
-	Pixel, Rgb,
+	LumaA, Pixel, Rgb,
 };
 
 // TODO: Consolidate with render_core::image::LoadableImageType? At least some
@@ -26,6 +26,16 @@ impl ColorMapping for Rgb<u8> {
 
 	fn dynamic_to_specific(d: DynamicImage) -> ImageBuffer<Self, Vec<Self::Subpixel>> {
 		d.to_rgb8()
+	}
+
+	fn force_bytes(b: &ImageBuffer<Self, Vec<Self::Subpixel>>) -> &[u8] { b.as_bytes() }
+}
+
+impl ColorMapping for LumaA<u8> {
+	fn color_type() -> ColorType { ColorType::La8 }
+
+	fn dynamic_to_specific(d: DynamicImage) -> ImageBuffer<Self, Vec<Self::Subpixel>> {
+		d.to_luma_alpha8()
 	}
 
 	fn force_bytes(b: &ImageBuffer<Self, Vec<Self::Subpixel>>) -> &[u8] { b.as_bytes() }
@@ -211,13 +221,14 @@ fn create_subimages<Map: ColorMapping + 'static>(
 enum WhichToGenerate {
 	Color,
 	Height,
+	Borders,
 }
 
 fn main() {
 	// Expects to be run with CWD in the project root
 	let image_root = Path::new("./www/images");
 
-	const GENERATE: WhichToGenerate = WhichToGenerate::Height;
+	const GENERATE: WhichToGenerate = WhichToGenerate::Color;
 	match GENERATE {
 		WhichToGenerate::Color => {
 			let color_image = read_image(&image_root.join("earth_color/0/full.png"));
@@ -226,8 +237,8 @@ fn main() {
 			let (width_0, height_0) = original.dimensions();
 			println!("Loaded image: {} x {}", width_0, height_0);
 
-			create_downscaled_originals(image_root, "earth_color", 2, original);
-			create_subimages::<Rgb<u8>>(image_root, "earth_color", 2, 4, 2);
+			create_downscaled_originals(image_root, "earth_color", 3, original);
+			create_subimages::<Rgb<u8>>(image_root, "earth_color", 3, 4, 2);
 		}
 		WhichToGenerate::Height => {
 			let original_dynamic = image::open(image_root.join("earth_height/0/full.png"))
@@ -239,8 +250,22 @@ fn main() {
 			let (width_0, height_0) = original.dimensions();
 			println!("Loaded image: {} x {}", width_0, height_0);
 
-			create_downscaled_originals(image_root, "earth_height", 2, original);
-			create_subimages::<Luma<u8>>(image_root, "earth_height", 2, 4, 2);
+			create_downscaled_originals(image_root, "earth_height", 3, original);
+			create_subimages::<Luma<u8>>(image_root, "earth_height", 3, 4, 2);
+		}
+		WhichToGenerate::Borders => {
+			let original_dynamic = image::open(image_root.join("countries/0/full.png"))
+				.map_err(|e| e.to_string())
+				.expect("Failed to load image!");
+
+			let original =
+				original_dynamic.as_luma_alpha8().expect("Failed to get LumaAlpha8 Image!");
+
+			let (width_0, height_0) = original.dimensions();
+			println!("Loaded image: {} x {}", width_0, height_0);
+
+			create_downscaled_originals(image_root, "countries", 3, original);
+			create_subimages::<LumaA<u8>>(image_root, "countries", 3, 4, 2);
 		}
 	}
 }

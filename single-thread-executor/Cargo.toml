@@ -7,7 +7,7 @@ repository = "https://github.com/asaaj/ghg"
 license-file = "LICENSE_MIT"
 
 [dependencies]
-async-channel = "1.8"
+async-channel = "2.3"
 futures = "0.3"
 js-sys = "0.3"
 wasm-bindgen = "0.2"

@@ -12,7 +12,7 @@ fn main() -> std::io::Result<()> {
 	let args: Vec<String> = env::args().collect();
 	assert_eq!(args.len(), 2);
 
-	let output_root = Path::new("ghg/www/images/countries");
+	let output_root = Path::new("ghg/www/images/countries/0");
 	assert!(output_root.exists());
 
 	let data_source = Path::new(&args[1]);
@@ -28,9 +28,10 @@ fn main() -> std::io::Result<()> {
 		println!("  - {file:?}");
 	}
 
-	// let metadata = ShapefileMetadata { width: 200, height: 100 };
-	let metadata = ShapefileMetadata { width: 10800, height: 5400 };
-	// let metadata = ShapefileMetadata { width: 21600, height: 10800 };
+	// let metadata = ShapefileMetadata { width: 2700, height: 1350 }; // Level 3
+	// let metadata = ShapefileMetadata { width: 5400, height: 2700 }; // Level 2
+	// let metadata = ShapefileMetadata { width: 10800, height: 5400 }; // Level 1
+	let metadata = ShapefileMetadata { width: 21600, height: 10800 }; // Level 0
 
 	for file in &data_files {
 		let geometry_universe: GeometryUniverse = Shp::<f64>::open(file, metadata)
@@ -40,7 +41,7 @@ fn main() -> std::io::Result<()> {
 		let geometry_map = geometry_universe.into_geometry_map(metadata.width, metadata.height);
 		let image = geometry_map.to_image();
 
-		let output_name = output_root.join("country_map.png");
+		let output_name = output_root.join("original.png");
 		image.save(output_name).expect("Failed to save image data");
 	}
 
