@@ -5,8 +5,8 @@ use async_std::task;
 use image::LumaA;
 use wasm_bindgen::JsValue;
 use web_sys::WebGl2RenderingContext;
-use crate::application::image_utility::biggest_mipmap_level;
 
+use crate::application::image_utility::biggest_mipmap_level;
 use crate::application::shaders::ShaderContext;
 use crate::render_core::animation_params::AnimationParams;
 use crate::render_core::frame_sequencer::FrameGate;
@@ -22,7 +22,8 @@ async fn load_country_data(
 	shader_context: ShaderContext,
 	texture_index: u32,
 ) -> Result<(), JsValue> {
-	let mipmap_level = biggest_mipmap_level(shader_context.context.clone(), COUNTRY_IMAGE_MAX_SIZE)?;
+	let mipmap_level =
+		biggest_mipmap_level(shader_context.context.clone(), COUNTRY_IMAGE_MAX_SIZE)?;
 	let country_root = Path::new("images/countries");
 	let country_map_image = country_root.join(format!("{mipmap_level}/full.png").as_str());
 

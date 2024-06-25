@@ -8,8 +8,8 @@ use image::{Luma, Rgb};
 use single_thread_executor::Spawner;
 use wasm_bindgen::JsValue;
 use web_sys::WebGl2RenderingContext;
-use crate::application::image_utility::biggest_mipmap_level;
 
+use crate::application::image_utility::biggest_mipmap_level;
 use crate::application::lighting::LightParameters;
 use crate::application::shaders::ShaderContext;
 use crate::application::sphere::generate_sphere;
@@ -34,7 +34,8 @@ async fn load_planet_terrain(
 	texture_index: u32,
 	mipmap_level: usize,
 ) -> Result<(), JsValue> {
-	let texture = fetch_bytes(format!("images/earth_height/{mipmap_level}/full.png").as_str()).await?;
+	let texture =
+		fetch_bytes(format!("images/earth_height/{mipmap_level}/full.png").as_str()).await?;
 	load_into_texture::<Luma<u8>>(
 		context,
 		&texture,
@@ -47,7 +48,8 @@ async fn load_planet_color(
 	texture_index: u32,
 	mipmap_level: usize,
 ) -> Result<(), JsValue> {
-	let texture = fetch_bytes(format!("images/earth_color/{mipmap_level}/full.png").as_str()).await?;
+	let texture =
+		fetch_bytes(format!("images/earth_color/{mipmap_level}/full.png").as_str()).await?;
 	load_into_texture::<Rgb<u8>>(
 		context,
 		&texture,

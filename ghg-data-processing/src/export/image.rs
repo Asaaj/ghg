@@ -2,7 +2,6 @@ use image::{
 	GrayAlphaImage, GrayImage, ImageBuffer, Luma, LumaA, Pixel, Rgb, RgbImage, Rgba, RgbaImage,
 };
 use itertools::izip;
-
 #[cfg(feature = "read_shapefile")]
 use shapefile::Shape;
 
