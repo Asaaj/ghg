@@ -42,7 +42,7 @@ impl ToGeometryUniverse for Shp<f64> {
 		let mut universe = GeometryUniverse::default();
 
 		let increment = 1usize;
-		let mut identity = 0usize;
+		let mut identity = 1usize; // Not 0, that's the ocean
 		let mut printed_keys = false;
 
 		for shape_record in reader.iter_shapes_and_records() {

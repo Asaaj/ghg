@@ -74,8 +74,12 @@ vec4 getTerrainColor() {
 vec4 getCountryColor() {
     vec2 texturePoint = pointToUv(normalize(fragPosition));
     vec4 countryColor = texture(s_countryMap, texturePoint);
-    vec3 color = hsl2rgb(vec3(countryColor.a, 1.0, 0.5));
-    return vec4(color, 1.0);
+    if (countryColor.a == 0.0) {
+        return vec4(0.0);
+    } else {
+        vec3 color = hsl2rgb(vec3(countryColor.a, 1.0, 0.5));
+        return vec4(color, 1.0);
+    }
 }
 
 vec4 getDataColor() {
