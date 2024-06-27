@@ -1,6 +1,10 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::DerefMut;
+use std::sync::Mutex;
 
+use lazy_static::lazy_static;
 use paste::paste;
 use web_sys::{WebGl2RenderingContext, WebGlUniformLocation};
 
@@ -8,22 +12,47 @@ use crate::application::shaders::ShaderContext;
 #[allow(unused_imports)]
 use crate::utils::prelude::*;
 
+#[derive(Clone, Debug, Default)]
+struct UniformValueTracker<T: UniformValue> {
+	uniforms: HashMap<(usize, String), T>,
+}
+
+impl<T: Clone + Debug + PartialEq + UniformValue> UniformValueTracker<T> {
+	fn update(&mut self, uniform: &Uniform<T>, value: T) -> bool {
+		let key = (uniform.shader_context.id(), uniform.name.clone());
+
+		if let Some(saved) = self.uniforms.get_mut(&key) {
+			if *saved != value {
+				*saved = value;
+				return true;
+			}
+		} else {
+			self.uniforms.insert(key, value);
+			return true;
+		}
+
+		false
+	}
+}
+
+trait GetUniformValueTracker {
+	fn get_uniform_tracker() -> &'static Mutex<UniformValueTracker<Self>>
+	where
+		Self: UniformValue + Sized;
+}
+
 /// This provides a simple wrapper type for writing to uniform values.
-/// Uniform<T> provides strongly- typed uniform values and a simple interface
+/// Uniform<T> provides strongly-typed uniform values and a simple interface
 /// for writing the value to the GPU. SmartUniform<T> is an additional layer of
 /// "safety", which allows for writing parameters only when they have changed.
 /// This helps simplify the process of updating parameters during an animation
 /// loop, because you can simply call smart_write every time, and nothing will
 /// happen if the parameter hasn't changed.
-///
-/// Note, however, that these "smart" uniforms are currently independent of one
-/// another; creating multiple that point at the same uniform will cause
-/// problems. So it's not a complete solution yet.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // name isn't used, but it is useful. TODO: Remove it if not debug
 pub struct Uniform<T: Debug> {
 	name: String,
-	context: WebGl2RenderingContext,
+	shader_context: ShaderContext,
 	location: Option<WebGlUniformLocation>,
 	phantom_value: PhantomData<T>, // Strongly-typed Uniforms are important
 }
@@ -32,39 +61,44 @@ impl<T: Clone + Debug + PartialEq + UniformValue> Uniform<T> {
 	pub fn new(name: &str, shader_context: &ShaderContext) -> Self {
 		let location = shader_context.context.get_uniform_location(&shader_context.program, name);
 		Self {
-			context: shader_context.context.clone(),
 			name: name.to_owned(),
+			shader_context: shader_context.clone(),
 			location,
 			phantom_value: PhantomData,
 		}
 	}
 
 	pub fn write_unchecked(&self, t: T) {
-		// let name = &self.name;
-		// ghg_log!("Writing uniform: {name} -> {t:?}");
-		t.write_to_program(&self.context, &self.location);
+		t.write_to_program(&self.shader_context.context, &self.location);
 	}
 }
 
 #[derive(Debug)]
-pub struct SmartUniform<T: Debug> {
+pub struct SmartUniform<T: Debug + UniformValue + 'static> {
 	uniform: Uniform<T>,
-	last_value: Option<T>,
+	uniform_tracker: &'static Mutex<UniformValueTracker<T>>,
 }
 
-impl<T: Clone + Debug + PartialEq + UniformValue> SmartUniform<T> {
+impl<T: Clone + Debug + PartialEq + UniformValue + GetUniformValueTracker + 'static>
+	SmartUniform<T>
+{
 	pub fn new(name: &str, shader_context: &ShaderContext) -> Self {
-		Self { uniform: Uniform::new(name, shader_context), last_value: None }
+		Self {
+			uniform: Uniform::new(name, shader_context),
+			uniform_tracker: T::get_uniform_tracker(),
+		}
 	}
 
-	// pub fn get_unchecked(&self) -> Uniform<T> {
-	//     self.uniform.clone()
-	// }
-
 	pub fn smart_write(&mut self, t: T) {
-		if self.last_value.is_none() || &t != self.last_value.as_ref().unwrap() {
-			self.uniform.write_unchecked(t.clone());
-			self.last_value = Some(t);
+		match self.uniform_tracker.lock() {
+			Ok(mut tracker) => {
+				if tracker.deref_mut().update(&self.uniform, t.clone()) {
+					self.uniform.write_unchecked(t);
+				}
+			}
+			Err(_) => {
+				ghg_error!("Failed to lock uniform tracker: {:?}", self.uniform);
+			}
 		}
 	}
 }
@@ -104,7 +138,7 @@ macro_rules! impl_uniform_creator_fns {
 }
 
 macro_rules! impl_smart_uniform_creator_fns {
-    ($type_name:ty, $short_name:ident) => {
+    ($type_name:ty, $short_name:ident, $tracker_name:ident) => {
         paste! {
             #[allow(dead_code)]
             #[doc = "Creates a new `SmartUniform<" [< $short_name:upper _STR >] ">`."]
@@ -121,6 +155,17 @@ macro_rules! impl_smart_uniform_creator_fns {
                 u.smart_write(value);
                 u
             }
+
+        }
+
+        lazy_static! {
+            static ref $tracker_name: Mutex<UniformValueTracker<$type_name>> = Default::default();
+        }
+
+        impl GetUniformValueTracker for $type_name {
+            fn get_uniform_tracker() -> &'static Mutex<UniformValueTracker<Self>> {
+                &$tracker_name
+            }
         }
     };
 }
@@ -135,7 +180,9 @@ macro_rules! impl_uniform {
         }
 
         impl_uniform_creator_fns!($type_name, $short_name);
-        impl_smart_uniform_creator_fns!($type_name, $short_name);
+        paste! {
+            impl_smart_uniform_creator_fns!($type_name, $short_name, [< UNIFORM_VALUE_ $short_name >]);
+        }
     };
 
     // Self is a primitive type, and its own short name; pass self directly to the OpenGL function call
@@ -160,7 +207,9 @@ macro_rules! impl_uniform {
         }
 
         impl_uniform_creator_fns!($type_name, $short_name);
-        impl_smart_uniform_creator_fns!($type_name, $short_name);
+        paste! {
+            impl_smart_uniform_creator_fns!($type_name, $short_name, [< UNIFORM_VALUE_ $short_name >]);
+        }
     };
 }
 

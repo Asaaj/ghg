@@ -3,7 +3,6 @@
 extern crate core;
 
 use std::fs;
-use std::ops::Deref;
 use std::path::Path;
 
 use image::imageops::{resize, FilterType};

@@ -23,15 +23,16 @@ impl Camera {
 
 	pub fn get_perspective_matrices(&self, screen_width: i32, screen_height: i32) -> MvpMatrices {
 		let aspect_ratio = (screen_width as f32) / (screen_height as f32);
-		let fov_radians = nglm::quarter_pi::<f32>();
 		let model: nglm::Mat4 = nglm::identity();
 		let view = nglm::look_at(&self.position(), &self.target(), &self.up());
-		let mut projection = nglm::perspective(aspect_ratio, fov_radians, 0.1, 10.0);
+		let mut projection = nglm::perspective(aspect_ratio, self.fov_radians(), 0.1, 10.0);
 
 		projection.data.0[1][1] *= -1.0; // Flip so y points upwards
 
 		MvpMatrices { model, view, projection }
 	}
+
+	pub fn fov_radians(&self) -> f32 { nglm::quarter_pi::<f32>() }
 
 	pub fn position(&self) -> nglm::Vec3 { self.position }
 

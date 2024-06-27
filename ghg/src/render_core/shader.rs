@@ -4,8 +4,6 @@ use phf::{phf_map, Map};
 use regex;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 
-use crate::utils::prelude::*;
-
 /// Note: `shader_path` must be relative to this crate's `src` directory
 pub fn preprocess_and_compile_shader(
 	context: &WebGl2RenderingContext,

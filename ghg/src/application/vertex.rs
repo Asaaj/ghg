@@ -35,8 +35,11 @@ pub struct BasicMesh {
 	vertices: Vec<Vertex>,
 	indices: Vec<u32>,
 	bounding_box: Option<nglm::Mat3x2>,
-	center: Option<nglm::Vec3>,
+	pub center: Option<nglm::Vec3>,
+	is_visible_fn: fn(&Self, &Camera) -> bool,
 }
+
+pub fn mesh_is_always_visible(_mesh: &BasicMesh, _camera: &Camera) -> bool { true }
 
 impl BasicMesh {
 	pub fn with_capacities(vertex_cap: usize, index_cap: usize) -> Self {
@@ -45,13 +48,14 @@ impl BasicMesh {
 			indices: Vec::with_capacity(index_cap),
 			bounding_box: None,
 			center: None,
+			is_visible_fn: mesh_is_always_visible,
 		}
 	}
 
 	#[allow(dead_code)]
 	pub fn with_contents(vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
 		let (bounding_box, center) = calculate_bounding_box_and_center(&vertices);
-		Self { vertices, indices, bounding_box, center }
+		Self { vertices, indices, bounding_box, center, is_visible_fn: mesh_is_always_visible }
 	}
 
 	pub fn push_vertex(&mut self, vertex: Vertex) {
@@ -63,9 +67,9 @@ impl BasicMesh {
 
 	pub fn push_index(&mut self, index: u32) { self.indices.push(index); }
 
-	// pub fn vertices_mut(&mut self) -> &mut Vec<Vertex> {
-	//     &mut self.vertices
-	// }
+	pub fn set_visible_fn(&mut self, is_visible_fn: fn(&Self, &Camera) -> bool) {
+		self.is_visible_fn = is_visible_fn;
+	}
 }
 
 #[allow(dead_code)]
@@ -88,15 +92,11 @@ fn calculate_bounding_box_and_center(
 		})
 		.expect("Bad assumptions!");
 
-	ghg_log!("Min/max: {}/{}", min, max);
-
 	let mut bounds: nglm::Mat3x2 = nglm::zero();
 	bounds.set_column(0, &min);
 	bounds.set_column(1, &max);
 
-	ghg_log!("Bounds: {}", bounds);
 	let center = center_of_bounding_box(&bounds);
-	ghg_log!("Center: {}", center);
 	(Some(bounds), Some(center))
 }
 
@@ -173,17 +173,18 @@ impl ToMesh for BasicMesh {
 	// TODO: This is sphere-specific code, so I need to implement Sphere as its
 	// own mesh collection.
 	fn is_visible(&self, camera: &Camera) -> bool {
+		(self.is_visible_fn)(self, camera)
 		// true
-		let mesh_center = self.center;
-		if mesh_center.is_none() {
-			ghg_error!("Invalid mesh!");
-			return false;
-		}
-		let camera_position = camera.position();
-		let dist = camera_position.metric_distance(&mesh_center.unwrap());
-		let camera_from_origin = camera_position.magnitude();
-
-		dist <= camera_from_origin
+		// let mesh_center = self.center;
+		// if mesh_center.is_none() {
+		// 	ghg_error!("Invalid mesh!");
+		// 	return false;
+		// }
+		// let camera_position = camera.position();
+		// let dist = camera_position.metric_distance(&mesh_center.unwrap());
+		// let camera_from_origin = camera_position.magnitude();
+		//
+		// dist <= camera_from_origin
 	}
 }
 
@@ -193,7 +194,6 @@ mod tests {
 
 	use crate::application::sphere::*;
 	use crate::application::vertex::{BasicMesh, Vertex};
-	use crate::render_core::mesh::ToMesh;
 	use crate::utils::prelude::*;
 
 	#[wasm_bindgen_test]

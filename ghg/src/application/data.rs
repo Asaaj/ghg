@@ -112,6 +112,8 @@ pub async fn handle_data(
 		let current_month = current_month.get() as i32;
 		let current_map_index = current_month / NUM_CHANNELS;
 
+		shader_context.use_shader();
+
 		texture_uniform.smart_write(map_indices[current_map_index as usize] as i32);
 		data_month_uniform.smart_write(current_month);
 	}

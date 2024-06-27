@@ -10,6 +10,7 @@ use crate::interaction_core::input_subscriber::{
 	FrameInputSubscriber, InputState, KeyState, MouseButton, MouseButtonState, MouseMovement,
 	Scroll, SwitchState, TouchMovement, TouchState,
 };
+use crate::interaction_core::user_inputs::LogicalCursorPosition;
 use crate::render_core::animation_params::AnimationParams;
 use crate::render_core::camera::Camera;
 use crate::render_core::frame_sequencer::FrameGate;
@@ -28,6 +29,7 @@ impl Controller {
 		planet_shader: ShaderContext,
 		terrain_scale: Uniform<f32>,
 		current_month: Rc<Cell<usize>>,
+		current_cursor_location: Rc<Cell<Option<LogicalCursorPosition>>>,
 	) -> Self {
 		let mut input_subscriber = FrameInputSubscriber::new(canvas);
 
@@ -61,6 +63,8 @@ impl Controller {
 		let mouse_move_camera = camera.clone();
 		input_subscriber.subscribe_on_mouse_move(Box::new(
 			move |movement: MouseMovement, current_state: InputState| {
+				current_cursor_location.replace(current_state.current_cursor_location());
+
 				let should_rotate = current_state.is_key_active("ShiftLeft".to_owned())
 					|| current_state.is_mouse_button_active(MouseButton::Left);
 
@@ -130,12 +134,19 @@ pub async fn controller_frame(
 	planet_shader: ShaderContext,
 	camera: Rc<RefCell<Camera>>,
 	current_month: Rc<Cell<usize>>,
+	current_cursor_location: Rc<Cell<Option<LogicalCursorPosition>>>,
 ) {
 	planet_shader.use_shader();
 	let terrain_scale = uniform::init_f32("u_terrainScale", &planet_shader, 0.03);
 
-	let mut controller =
-		Controller::new(canvas, camera, planet_shader.clone(), terrain_scale, current_month);
+	let mut controller = Controller::new(
+		canvas,
+		camera,
+		planet_shader.clone(),
+		terrain_scale,
+		current_month,
+		current_cursor_location,
+	);
 
 	loop {
 		let _params = (&gate).await;

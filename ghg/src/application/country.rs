@@ -1,7 +1,5 @@
 use std::path::Path;
-use std::time::Duration;
 
-use async_std::task;
 use image::LumaA;
 use wasm_bindgen::JsValue;
 use web_sys::WebGl2RenderingContext;
@@ -48,6 +46,7 @@ pub async fn draw_borders(
 	let texture_index = texture_provider.take();
 
 	shader_context.use_shader();
+
 	let _texture_uniform =
 		uniform::init_smart_i32("s_countryMap", &shader_context, texture_index as i32);
 	let load_result = load_country_data(shader_context.clone(), texture_index).await;

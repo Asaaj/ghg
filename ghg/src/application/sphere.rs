@@ -1,18 +1,32 @@
 use nglm::{Vec2, Vec3, Vec4};
 
 use crate::application::vertex::{BasicMesh, Vertex};
+use crate::render_core::camera::Camera;
 #[allow(unused_imports)]
 use crate::utils::prelude::*;
 
-// Thanks, Sebastian Lague. https://www.youtube.com/watch?v=sLqXFF8mlEU
-pub fn generate_sphere(subdivisions: u32, points_per_subdivision: u32) -> Vec<BasicMesh> {
-	generate_sphere_with_position(subdivisions, points_per_subdivision, nglm::zero())
+fn is_sphere_section_visible(sphere: &BasicMesh, camera: &Camera) -> bool {
+	let mesh_center = sphere.center;
+	if mesh_center.is_none() {
+		ghg_error!("Invalid sphere!");
+		return false;
+	}
+	let camera_position = camera.position();
+	let dist = camera_position.metric_distance(&mesh_center.unwrap());
+	let camera_from_origin = camera_position.magnitude();
+
+	dist <= camera_from_origin
 }
 
-pub fn generate_sphere_with_position(
+// Thanks, Sebastian Lague. https://www.youtube.com/watch?v=sLqXFF8mlEU
+pub fn generate_sphere(subdivisions: u32, points_per_subdivision: u32) -> Vec<BasicMesh> {
+	generate_sphere_with_color(subdivisions, points_per_subdivision, None)
+}
+
+pub fn generate_sphere_with_color(
 	subdivisions: u32,
 	points_per_subdivision: u32,
-	center: Vec3,
+	face_color: Option<Vec4>,
 ) -> Vec<BasicMesh> {
 	let subface_generator = QuadSubface {};
 	cube_normals()
@@ -23,7 +37,7 @@ pub fn generate_sphere_with_position(
 				n,
 				subdivisions,
 				points_per_subdivision,
-				center.clone(),
+				face_color.clone(),
 			)
 		})
 		.flatten()
@@ -46,7 +60,7 @@ fn generate_face<T: SubfaceGenerator + Clone>(
 	normal: &Vec3,
 	subdivisions: u32,
 	points_per_subdivision: u32,
-	sphere_center: Vec3,
+	face_color: Option<Vec4>,
 ) -> Vec<BasicMesh> {
 	let mut meshes = Vec::new();
 
@@ -64,7 +78,7 @@ fn generate_face<T: SubfaceGenerator + Clone>(
 				points_per_subdivision,
 				subdivision_start,
 				subdivision_size,
-				sphere_center.clone(),
+				face_color.clone(),
 			));
 		}
 	}
@@ -78,15 +92,16 @@ fn generate_subface<T: SubfaceGenerator>(
 	points_per_side: u32,
 	subdivision_start: Vec2,
 	subdivision_side_length: f32,
-	sphere_center: Vec3,
+	face_color: Option<Vec4>,
 ) -> BasicMesh {
-	let face_color = determine_face_color(face_normal);
+	let face_color = face_color.unwrap_or(determine_face_color(face_normal));
 
 	let axis_a = nglm::vec3(face_normal.y, face_normal.z, face_normal.x);
 	let axis_b = nglm::cross(face_normal, &axis_a);
 
 	let (num_vertices, num_indices) = subface_generator.vertex_and_index_size(points_per_side);
 	let mut mesh = BasicMesh::with_capacities(num_vertices, num_indices);
+	mesh.set_visible_fn(is_sphere_section_visible);
 
 	for y in 0..points_per_side {
 		for x in 0..points_per_side {
@@ -100,7 +115,7 @@ fn generate_subface<T: SubfaceGenerator>(
 			let point: Vec3 =
 				(face_normal + axis_a * (2.0 * t.x - 1.0) + axis_b * (2.0 * t.y - 1.0)).into();
 
-			let sphere_point = point_on_cube_to_point_on_sphere(point) + sphere_center;
+			let sphere_point = point_on_cube_to_point_on_sphere(point);
 			let normal: Vec3 = sphere_point.normalize();
 
 			subface_generator.add_for_point(

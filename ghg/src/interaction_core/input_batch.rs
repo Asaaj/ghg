@@ -137,7 +137,7 @@ impl InputState {
 	}
 
 	#[allow(dead_code)]
-	pub fn current_mouse_location(&self) -> Option<LogicalCursorPosition> { self.mouse_position }
+	pub fn current_cursor_location(&self) -> Option<LogicalCursorPosition> { self.mouse_position }
 
 	pub fn active_touch_identifiers(&self) -> Vec<i32> {
 		self.current_set
@@ -329,7 +329,7 @@ fn add_mouse_move_handler(
 ) -> MouseEventHandler {
 	let mouse_move_event_handler = Closure::wrap(Box::new(move |e: MouseEvent| {
 		let new_state =
-			UserInput::<KeyCode>::CursorPosition(nglm::vec2(e.screen_x(), e.screen_y()));
+			UserInput::<KeyCode>::CursorPosition(nglm::vec2(e.client_x(), e.client_y()));
 
 		current_state.replace_with(move |previous| previous.incorporate(new_state));
 	}) as Box<dyn FnMut(MouseEvent)>);

@@ -174,6 +174,8 @@ pub async fn draw(
 	loop {
 		let params = (&gate).await;
 
+		shader.use_shader();
+
 		if DEBUG_FRUSTUM {
 			frustum_test_camera.orbit_around_target(
 				&nglm::zero(),

@@ -112,8 +112,9 @@ void main() {
     vec4 countryColor = getCountryColor();
     vec4 dataColor = getDataColor();
 
+//    vec4 surfaceColor = mix(fragColor, countryColor, 0.8);
     vec4 surfaceColor = mix(terrainColor, countryColor, 0.6);
-    surfaceColor = mix(surfaceColor, dataColor, 0.4);
+//    surfaceColor = mix(surfaceColor, dataColor, 0.4);
 
     outColor = surfaceColor * vec4(totalLightColor, 1.0);
 }
