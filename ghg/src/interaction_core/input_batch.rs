@@ -10,6 +10,7 @@ use crate::interaction_core::user_inputs::{
 	KeyCodeState, LogicalCursorPosition, LogicalTouchPosition, MouseButton, MouseButtonState,
 	Scroll, SwitchState, TouchState, UserInput,
 };
+use crate::render_core::canvas::window;
 use crate::utils::prelude::*;
 
 pub type KeyState = KeyCodeState<KeyCode>;
@@ -328,8 +329,10 @@ fn add_mouse_move_handler(
 	current_state: Rc<RefCell<InputState>>,
 ) -> MouseEventHandler {
 	let mouse_move_event_handler = Closure::wrap(Box::new(move |e: MouseEvent| {
-		let new_state =
-			UserInput::<KeyCode>::CursorPosition(nglm::vec2(e.client_x(), e.client_y()));
+		let dpr: f64 = window().device_pixel_ratio();
+		let x = (e.client_x() as f64 * dpr).round() as i32;
+		let y = (e.client_y() as f64 * dpr).round() as i32;
+		let new_state = UserInput::<KeyCode>::CursorPosition(nglm::vec2(x, y));
 
 		current_state.replace_with(move |previous| previous.incorporate(new_state));
 	}) as Box<dyn FnMut(MouseEvent)>);
